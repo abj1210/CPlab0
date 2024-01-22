@@ -12,7 +12,7 @@ int yycolumn = 1;
  yylloc.last_column = yycolumn + yyleng - 1; \
  yycolumn += yyleng;
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define COMMON_ACTIONS(VAL_TYPE, RET_TYPE, NAME) \
         if(DEBUG){\
@@ -30,10 +30,10 @@ int yycolumn = 1;
         }\
         yylval=make_intb##BASE##_node(yytext);\
         if(yylval==NULL){\
-                fprintf(stderr,"Error type A at Line %d : Invalid int form \"%s\" \n", yylineno, yytext);\
-                return YYerror;\
+                set_errstate();\
+                if(yylineno!=errline){fprintf(yyout,"Error type A at Line %d: Invalid int form \"%s\".\n", yylineno, yytext);errline=yylineno;}\
         }\
-        return INT;
+        else return INT;
 
 #define FLOAT_ACTIONS(TYPE) \
         if(DEBUG){\
@@ -46,14 +46,17 @@ int yycolumn = 1;
 #define ID_ACTIONS \
         if(DEBUG)fprintf(yyout,"ID     (id=0x%02x) %s\n", ID, yytext);\
         yylval=make_id_node(yytext);\
-        return ID;
+        if(yylval==NULL){\
+                set_errstate();\
+                if(yylineno!=errline){fprintf(yyout,"Error type A at Line %d: Invalid id.\n", yylineno);errline=yylineno;}\
+        }\
+        else return ID;
 %}
 
 %option yylineno
 
-comment_1 ("//")(.)
-comment_2 "/*"([^*]|\*+[^*/])*\*+"/"
-white [\t ]
+
+white [\r\t ]
 digit [0-9]
 l_letter [a-z]
 u_letter [A-Z]
@@ -68,10 +71,12 @@ efloat (({digit}*("."){digit}+)|({digit}+(".")))(e|E)((\+|-)?({digit}+))
 
 id ({l_letter}|{u_letter}|_)({l_letter}|{u_letter}|{digit}|_)*
 
+comment_1 ("//")(.)
+comment_2 "/*"([^*]|\*+[^*/])*\*+"/"
 
 
 %%
-{white}+ ;
+{white}+ {}
 "\n"  {yycolumn=1;}
 {comment_1} {if(DEBUG)fprintf(yyout,"This is a comment: %s\n", yytext);}
 {comment_2} {if(DEBUG)fprintf(yyout,"This is a comment: %s\n", yytext);}
@@ -104,15 +109,14 @@ id ({l_letter}|{u_letter}|_)({l_letter}|{u_letter}|{digit}|_)*
 "return" {COMMON_ACTIONS(RETURN,RETURN,RETURN)}
 "if"  {COMMON_ACTIONS(IF,IF,IF)}
 "else" {COMMON_ACTIONS(ELSE,ELSE,ELSE)}
-"while" {COMMON_ACTIONS(ELSE,ELSE,ELSE)}
+"while" {COMMON_ACTIONS(WHILE,WHILE,WHILE)}
 {intnum} {INT_ACTIONS(10)}
 {intnumb16} {INT_ACTIONS(16)}
 {intnumb8} {INT_ACTIONS(8)}
 {float}  {FLOAT_ACTIONS(FLOAT)}
 {efloat}  {FLOAT_ACTIONS(EFLOAT)}
-
 {id}   {ID_ACTIONS}
-.      {fprintf(stderr,"Error type A at Line %d : Invalid character \"%s\" \n", yylineno, yytext);return YYerror;}
+.      {if(yylineno!=errline){fprintf(yyout,"Error type A at Line %d: Invalid character \"%s\".\n", yylineno, yytext);errline=yylineno;set_errstate();}}
 %%
 int yywrap()
 {

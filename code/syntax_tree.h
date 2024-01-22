@@ -4,18 +4,29 @@
 #include<stdio.h>
 
 
+
+
+static int errline=0;
 struct syntex_tree_node
 {
-    char type_name[32];
+    char type_name[38];
     int mode;
     union
     {
         int type;
-        char name[32];
-        int inum;
+        char name[38];
+        unsigned int inum;
         float fnum;
         int line;
     } val;
+
+    int type_val;
+    int type_d;
+    char left_val;
+
+    int temp_idx;
+    int ptr;
+    int lab_mode;
 
     struct syntex_tree_node * first_son, * next_brother, * father;
 };
@@ -28,6 +39,8 @@ static int err=0;
 tree_node * get_root();
 
 void set_errstate();
+
+int get_errstate();
 
 tree_node * back_to(tree_node * now);
 
@@ -57,7 +70,7 @@ tree_node * make_float_node(const char * text);
 
 tree_node * make_id_node(const char * text);
 
-
+void pass_type(tree_node * x, tree_node * y);
 
 
 
